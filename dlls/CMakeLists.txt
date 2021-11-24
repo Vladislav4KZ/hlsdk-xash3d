@@ -20,10 +20,16 @@
 # SOFTWARE.
 #
 
-cmake_minimum_required(VERSION 2.6.0)
+cmake_minimum_required(VERSION 2.8.12)
 project (SVDLL)
 
 set (SVDLL_LIBRARY server)
+
+include(CheckIncludeFile)
+check_include_file("tgmath.h" HAVE_TGMATH_H)
+if(HAVE_TGMATH_H)
+	add_definitions(-DHAVE_TGMATH_H)
+endif()
 
 add_definitions(-DCLIENT_WEAPONS)
 
@@ -144,6 +150,12 @@ set (SVDLL_SOURCES
 
 include_directories (. wpn_shared ../common ../engine ../pm_shared ../game_shared ../public)
 
+if(MSVC)
+	set(SVDLL_SOURCES
+		${SVDLL_SOURCES}
+		hl.def)
+endif()
+
 if(USE_VOICEMGR)
 	set(SVDLL_SOURCES
 		${SVDLL_SOURCES}
@@ -159,13 +171,14 @@ set_target_properties (${SVDLL_LIBRARY} PROPERTIES
 
 if(APPLE OR WIN32 OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 	set(SVDLL_NAME "${SERVER_LIBRARY_NAME}")
-	if(64BIT)
-		set(SVDLL_NAME "${SERVER_LIBRARY_NAME}64")
-	endif()
 
 	set_target_properties(${SVDLL_LIBRARY} PROPERTIES
 		OUTPUT_NAME ${SVDLL_NAME}
 		PREFIX "")
+endif()
+
+if(MSVC)
+	set_property(TARGET ${SVDLL_LIBRARY} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 install( TARGETS ${SVDLL_LIBRARY}
