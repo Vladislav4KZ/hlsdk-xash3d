@@ -20,16 +20,23 @@
 # SOFTWARE.
 #
 
-cmake_minimum_required(VERSION 2.6.0)
+cmake_minimum_required(VERSION 2.8.12)
 project (SVDLL)
 
 set (SVDLL_LIBRARY server)
+
+include(CheckIncludeFile)
+check_include_file("tgmath.h" HAVE_TGMATH_H)
+if(HAVE_TGMATH_H)
+	add_definitions(-DHAVE_TGMATH_H)
+endif()
 
 add_definitions(-DCLIENT_WEAPONS)
 
 if(NOT MSVC)
 	add_compile_options(-fno-exceptions) # GCC/Clang flag
 	add_compile_options(-Wno-invalid-offsetof) # GCC/Clang flag
+	add_compile_options(-fvisibility=hidden) # GCC/Clang flag
 	add_definitions(-D_LINUX) # It seems enough for all non-Win32 systems
 	add_definitions(-Dstricmp=strcasecmp -Dstrnicmp=strncasecmp -D_snprintf=snprintf -D_vsnprintf=vsnprintf )
 else()
@@ -46,13 +53,10 @@ set (SVDLL_SOURCES
 	gearbox/displacer.cpp
 	gearbox/drillsergeant.cpp
 	gearbox/eagle.cpp
-	gearbox/fgrunt_medic.cpp
-	gearbox/fgrunt_torch.cpp
 	gearbox/fgrunt.cpp
 	gearbox/func_tank_of.cpp
 #	gearbox/gearbox_client.cpp
 	gearbox/gearbox_effects.cpp
-	gearbox/gearbox_subs.cpp
 	gearbox/gearbox_triggers.cpp
 	gearbox/gearbox_utils.cpp
 	gearbox/generic_items.cpp
@@ -67,6 +71,7 @@ set (SVDLL_SOURCES
 	gearbox/m249.cpp
 	gearbox/massn.cpp
 	gearbox/nuclearbomb.cpp
+	gearbox/op4mortar.cpp
 	gearbox/otis.cpp
 	gearbox/penguin.cpp
 	gearbox/pipewrench.cpp
@@ -189,8 +194,18 @@ set (SVDLL_SOURCES
 	../pm_shared/pm_math.c
 	../pm_shared/pm_shared.c
 )
+
+if(NOT MSVC)
+	set_source_files_properties(gearbox/ropes.cpp PROPERTIES COMPILE_FLAGS -O0)
+endif()
 	
 include_directories (. wpn_shared ../common ../engine ../pm_shared ../game_shared ../public gearbox)
+
+if(MSVC)
+	set(SVDLL_SOURCES
+		${SVDLL_SOURCES}
+		hl.def)
+endif()
 
 if(USE_VOICEMGR)
 	set(SVDLL_SOURCES
@@ -206,9 +221,15 @@ set_target_properties (${SVDLL_LIBRARY} PROPERTIES
 	POSITION_INDEPENDENT_CODE 1)
 
 if(APPLE OR WIN32 OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+	set(SVDLL_NAME "${SERVER_LIBRARY_NAME}")
+
 	set_target_properties(${SVDLL_LIBRARY} PROPERTIES
-		OUTPUT_NAME ${SERVER_LIBRARY_NAME}
+		OUTPUT_NAME ${SVDLL_NAME}
 		PREFIX "")
+endif()
+
+if(MSVC)
+	set_property(TARGET ${SVDLL_LIBRARY} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 install( TARGETS ${SVDLL_LIBRARY}

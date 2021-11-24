@@ -29,8 +29,9 @@ public:
 	void DeathSound(void);
 	void IdleSound(void);
 	void AlertSound(void);
-	void PrescheduleThink(void);
+	void MonsterThink(void);
 	void StartTask(Task_t* pTask);
+	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
 
 	virtual int		Save(CSave &save);
 	virtual int		Restore(CRestore &restore);
@@ -46,6 +47,9 @@ public:
 
 	float m_flBirthTime;
 	BOOL m_fRoachSolid;
+
+protected:
+	void AttackSound();
 };
 
 

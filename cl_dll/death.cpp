@@ -23,6 +23,10 @@
 #include <string.h>
 #include <stdio.h>
 
+#if USE_VGUI
+#include "vgui_TeamFortressViewport.h"
+#endif
+
 DECLARE_MESSAGE( m_DeathNotice, DeathMsg )
 
 struct DeathNoticeItem {
@@ -71,7 +75,7 @@ int CHudDeathNotice::Init( void )
 
 	HOOK_MESSAGE( DeathMsg );
 
-	CVAR_CREATE( "hud_deathnotice_time", "6", 0 );
+	CVAR_CREATE( "hud_deathnotice_time", "6", FCVAR_ARCHIVE );
 
 	return 1;
 }
@@ -106,11 +110,13 @@ int CHudDeathNotice::Draw( float flTime )
 			continue;
 		}
 
-		rgDeathNoticeList[i].flDisplayTime = min( rgDeathNoticeList[i].flDisplayTime, gHUD.m_flTime + DEATHNOTICE_DISPLAY_TIME );
+		rgDeathNoticeList[i].flDisplayTime = Q_min( rgDeathNoticeList[i].flDisplayTime, gHUD.m_flTime + DEATHNOTICE_DISPLAY_TIME );
 
 		// Only draw if the viewport will let me
 		// vgui dropped out
-		//if( gViewPort && gViewPort->AllowedToPrintText() )
+#if USE_VGUI
+		if( gViewPort && gViewPort->AllowedToPrintText() )
+#endif
 		{
 			// Draw the death notice
 			y = YRES( DEATHNOTICE_TOP ) + 2 + ( 20 * i );  //!!!
@@ -168,6 +174,11 @@ int CHudDeathNotice::MsgFunc_DeathMsg( const char *pszName, int iSize, void *pbu
 	strcpy( killedwith, "d_" );
 	strncat( killedwith, READ_STRING(), sizeof(killedwith) - strlen(killedwith) - 1 );
 
+#if USE_VGUI
+	if (gViewPort)
+		gViewPort->DeathMsg( killer, victim );
+#endif
+
 	gHUD.m_Spectator.DeathMessage( victim );
 
 	for( i = 0; i < MAX_DEATHNOTICES; i++ )
@@ -182,9 +193,7 @@ int CHudDeathNotice::MsgFunc_DeathMsg( const char *pszName, int iSize, void *pbu
 		i = MAX_DEATHNOTICES - 1;
 	}
 
-	//if(gViewPort)
-	//	gViewPort->GetAllPlayersInfo();
-	gHUD.m_Scoreboard.GetAllPlayersInfo();
+	gHUD.GetAllPlayersInfo();
 
 	// Get the Killer's name
 	const char *killer_name = "";
@@ -204,7 +213,7 @@ int CHudDeathNotice::MsgFunc_DeathMsg( const char *pszName, int iSize, void *pbu
 	// Get the Victim's name
 	const char *victim_name = "";
 	// If victim is -1, the killer killed a specific, non-player object (like a sentrygun)
-	if( ( (char)victim ) != -1 )
+	if( ( (signed char)victim ) != -1 )
 		victim_name = g_PlayerInfoList[victim].name;
 	if( !victim_name )
 	{
@@ -219,7 +228,7 @@ int CHudDeathNotice::MsgFunc_DeathMsg( const char *pszName, int iSize, void *pbu
 	}
 
 	// Is it a non-player object kill?
-	if( ( (char)victim ) == -1 )
+	if( ( (signed char)victim ) == -1 )
 	{
 		rgDeathNoticeList[i].iNonPlayerKill = TRUE;
 

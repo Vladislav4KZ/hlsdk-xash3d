@@ -13,7 +13,7 @@
 *
 ****/
 #pragma once
-#ifndef BASEMONSTER_H
+#if !defined(BASEMONSTER_H)
 #define BASEMONSTER_H
 
 //
@@ -172,6 +172,7 @@ public:
 	void ClearSchedule( void );
 	BOOL FScheduleDone( void );
 	void ChangeSchedule( Schedule_t *pNewSchedule );
+	virtual void OnChangeSchedule( Schedule_t *pNewSchedule ) {}
 	void NextScheduledTask( void );
 	Schedule_t *ScheduleInList( const char *pName, Schedule_t **pList, int listCount );
 
@@ -328,6 +329,8 @@ public:
 	BOOL CineCleanup();
 
 	CBaseEntity* DropItem ( const char *pszItemName, const Vector &vecPos, const Vector &vecAng );// drop an item.
+
+	float m_flLastYawTime; // TODO: check valid offset
 
 	//
 	// Glowshell effects

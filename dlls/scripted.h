@@ -13,10 +13,10 @@
 *
 ****/
 #pragma once
-#ifndef SCRIPTED_H
+#if !defined(SCRIPTED_H)
 #define SCRIPTED_H
 
-#ifndef SCRIPTEVENT_H
+#if !defined(SCRIPTEVENT_H)
 #include "scriptevent.h"
 #endif
 
@@ -28,7 +28,7 @@
 #define SF_SCRIPT_NOINTERRUPT		32
 #define SF_SCRIPT_OVERRIDESTATE		64
 #define SF_SCRIPT_NOSCRIPTMOVEMENT	128
-
+#define SF_SCRIPT_CONTINUOUS		256
 #define SCRIPT_BREAK_CONDITIONS		(bits_COND_LIGHT_DAMAGE|bits_COND_HEAVY_DAMAGE)
 
 enum SS_INTERRUPT

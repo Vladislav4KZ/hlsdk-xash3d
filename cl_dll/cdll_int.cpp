@@ -23,10 +23,17 @@
 #include "netadr.h"
 #include "parsemsg.h"
 
-#if defined(GOLDSOURCE_SUPPORT) && (defined(_WIN32) || defined(__linux__) || defined(__APPLE__)) && (defined(__i386) || defined(_M_IX86))
-#define USE_VGUI_FOR_GOLDSOURCE_SUPPORT
+#if USE_VGUI
+#include "vgui_int.h"
+#include "vgui_TeamFortressViewport.h"
+#endif
+
+#if GOLDSOURCE_SUPPORT && (_WIN32 || __linux__ || __APPLE__) && (__i386 || _M_IX86)
+#define USE_FAKE_VGUI	!USE_VGUI
+#if USE_FAKE_VGUI
 #include "VGUI_Panel.h"
 #include "VGUI_App.h"
+#endif
 #endif
 
 extern "C"
@@ -38,6 +45,9 @@ extern "C"
 
 cl_enginefunc_t gEngfuncs;
 CHud gHUD;
+#if USE_VGUI
+TeamFortressViewport *gViewPort = NULL;
+#endif
 mobile_engfuncs_t *gMobileEngfuncs = NULL;
 
 extern "C" int g_bhopcap;
@@ -124,7 +134,7 @@ HUD_ConnectionlessPacket
 int DLLEXPORT HUD_ConnectionlessPacket( const struct netadr_s *net_from, const char *args, char *response_buffer, int *response_buffer_size )
 {
 	// Parse stuff from args
-	int max_buffer_size = *response_buffer_size;
+	// int max_buffer_size = *response_buffer_size;
 
 	// Zero it out since we aren't going to respond.
 	// If we wanted to response, we'd write data into response_buffer
@@ -183,7 +193,7 @@ int *HUD_GetRect( void )
 	return extent;
 }
 
-#ifdef USE_VGUI_FOR_GOLDSOURCE_SUPPORT
+#if USE_FAKE_VGUI
 class TeamFortressViewport : public vgui::Panel
 {
 public:
@@ -212,7 +222,9 @@ void TeamFortressViewport::paintBackground()
 //	int wide, tall;
 //	getParent()->getSize( wide, tall );
 //	setSize( wide, tall );
-	gEngfuncs.VGui_ViewportPaintBackground(HUD_GetRect());
+	int extents[4];
+	getParent()->getAbsExtents(extents[0],extents[1],extents[2],extents[3]);
+	gEngfuncs.VGui_ViewportPaintBackground(extents);
 }
 
 void *TeamFortressViewport::operator new( size_t stAllocateBlock )
@@ -236,7 +248,7 @@ so the HUD can reinitialize itself.
 int DLLEXPORT HUD_VidInit( void )
 {
 	gHUD.VidInit();
-#ifdef USE_VGUI_FOR_GOLDSOURCE_SUPPORT
+#if USE_FAKE_VGUI
 	vgui::Panel* root=(vgui::Panel*)gEngfuncs.VGui_GetPanel();
 	if (root) {
 		gEngfuncs.Con_Printf( "Root VGUI panel exists\n" );
@@ -254,6 +266,8 @@ int DLLEXPORT HUD_VidInit( void )
 	} else {
 		gEngfuncs.Con_Printf( "Root VGUI panel does not exist\n" );
 	}
+#elif USE_VGUI
+	VGui_Startup();
 #endif
 	return 1;
 }
@@ -272,6 +286,9 @@ void DLLEXPORT HUD_Init( void )
 {
 	InitInput();
 	gHUD.Init();
+#if USE_VGUI
+	Scheme_Init();
+#endif
 
 	gEngfuncs.pfnHookUserMsg( "Bhopcap", __MsgFunc_Bhopcap );
 }
@@ -335,7 +352,9 @@ Called by engine every frame that client .dll is loaded
 
 void DLLEXPORT HUD_Frame( double time )
 {
-#ifdef USE_VGUI_FOR_GOLDSOURCE_SUPPORT
+#if USE_VGUI
+	GetClientVoiceMgr()->Frame(time);
+#elif USE_FAKE_VGUI
 	if (!gViewPort)
 		gEngfuncs.VGui_ViewportPaintBackground(HUD_GetRect());
 #else
@@ -353,7 +372,9 @@ Called when a player starts or stops talking.
 
 void DLLEXPORT HUD_VoiceStatus( int entindex, qboolean bTalking )
 {
-
+#if USE_VGUI
+	GetClientVoiceMgr()->UpdateSpeakerStatus(entindex, bTalking);
+#endif
 }
 
 /*
@@ -376,7 +397,22 @@ void DLLEXPORT HUD_MobilityInterface( mobile_engfuncs_t *gpMobileEngfuncs )
 	gMobileEngfuncs = gpMobileEngfuncs;
 }
 
-bool isXashFWGS()
+bool HUD_MessageBox( const char *msg )
+{
+	gEngfuncs.Con_Printf( msg ); // just in case
+
+	if( IsXashFWGS() )
+	{
+		gMobileEngfuncs->pfnSys_Warn( msg );
+		return true;
+	}
+
+	// TODO: Load SDL2 and call ShowSimpleMessageBox
+
+	return false;
+}
+
+bool IsXashFWGS()
 {
 	return gMobileEngfuncs != NULL;
 }

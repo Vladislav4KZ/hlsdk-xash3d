@@ -13,10 +13,11 @@
 *
 ****/
 #pragma once
-#ifndef PLAYER_H
+#if !defined(PLAYER_H)
 #define PLAYER_H
 
 #include "pm_materials.h"
+#include "ropes.h"
 
 #define PLAYER_FATAL_FALL_SPEED		1024// approx 60 feet
 #define PLAYER_MAX_SAFE_FALL_SPEED	580// approx 20 feet
@@ -37,6 +38,8 @@
 #define	PFLAG_LATCHING		( 1<<6 )	// Player is latching to a target
 #define	PFLAG_ATTACHED		( 1<<7 )	// Player is attached by a barnacle tongue tip
 
+
+#define PFLAG_ONROPE		( 1<<8 )
 //
 // generic player
 //
@@ -315,14 +318,12 @@ public:
 
 	void TabulateAmmo( void );
 
-	Vector m_vecLastViewAngles;
-
 	float m_flStartCharge;
 	float m_flAmmoStartCharge;
 	float m_flPlayAftershock;
 	float m_flNextAmmoBurn;// while charging, when to absorb another unit of player's ammo?
 
-	//Player ID
+	// Player ID
 	void InitStatusBar( void );
 	void UpdateStatusBar( void );
 	int m_izSBarState[SBAR_END];
@@ -331,12 +332,13 @@ public:
 	char m_SbarString0[SBAR_STRING_SIZE];
 	char m_SbarString1[SBAR_STRING_SIZE];
 
+	void SetPrefsFromUserinfo( char *infobuffer );
+
 	float m_flNextChatTime;
 	//
 	// Op4 player attributes.
 	//
 	BOOL	m_fInXen;
-	BOOL	m_fIsFrozen;
 
 	friend class CDisplacer;
 	friend class CTriggerXenReturn;
@@ -374,7 +376,33 @@ public:
 
 	void Service_Grapple( void );
 
+	int m_iAutoWepSwitch;
+
+	Vector m_vecLastViewAngles;
+
 	bool m_bSentBhopcap; // If false, the player just joined and needs a bhopcap message.
+
+	bool m_bIsClimbing;
+	float m_flLastClimbTime;
+	CRope *m_pRope;
+	BOOL IsOnRope()
+	{
+		return ( m_afPhysicsFlags & PFLAG_ONROPE ) != 0;
+	}
+
+	void SetRope( CBaseEntity *pRope )
+	{
+		m_pRope = (CRope*)pRope;
+	}
+	void SetOnRopeState( bool onRope )
+	{
+	  if( onRope )
+		m_afPhysicsFlags |= PFLAG_ONROPE;
+	  else
+		m_afPhysicsFlags &= ~PFLAG_ONROPE;
+
+	}
+	CRope* GetRope() { return m_pRope; }
 };
 
 #define AUTOAIM_2DEGREES  0.0348994967025

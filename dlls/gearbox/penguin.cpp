@@ -12,7 +12,7 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#if !defined( OEM_BUILD ) && !defined( HLDEMO_BUILD )
+#if !OEM_BUILD && !HLDEMO_BUILD
 
 #include "extdll.h"
 #include "util.h"
@@ -40,7 +40,7 @@ enum penguin_e {
 	PENGUIN_THROW
 };
 
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 
 class CPenguinGrenade : public CGrenade
 {
@@ -131,7 +131,7 @@ void CPenguinGrenade::Spawn(void)
 	pev->gravity = 0.5;
 	pev->friction = 0.5;
 
-	pev->dmg = gSkillData.snarkDmgPop;
+	pev->dmg = gSkillData.plrDmgHandGrenade;
 
 	m_flDie = gpGlobals->time + PENGUIN_DETONATE_DELAY;
 
@@ -161,33 +161,12 @@ void CPenguinGrenade::Precache(void)
 
 void CPenguinGrenade::Killed(entvars_t *pevAttacker, int iGib)
 {
-	pev->model = iStringNull;// make invisible
-	SetThink(&CPenguinGrenade::SUB_Remove);
-	SetTouch(NULL);
-	pev->nextthink = gpGlobals->time + 0.1;
-
-	// since squeak grenades never leave a body behind, clear out their takedamage now.
-	// Squeaks do a bit of radius damage when they pop, and that radius damage will
-	// continue to call this function unless we acknowledge the Squeak's death now. (sjb)
-	pev->takedamage = DAMAGE_NO;
-
-	// play squeek blast
-	EMIT_SOUND_DYN(ENT(pev), CHAN_ITEM, "squeek/sqk_blast1.wav", 1, 0.5, 0, PITCH_NORM);
-
-	CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, SMALL_EXPLOSION_VOLUME, 3.0);
-
-	UTIL_BloodDrips(pev->origin, g_vecZero, BloodColor(), 80);
-
-	if (m_hOwner != 0)
-		RadiusDamage(pev, m_hOwner->pev, pev->dmg, CLASS_NONE, DMG_BLAST);
-	else
-		RadiusDamage(pev, pev, pev->dmg, CLASS_NONE, DMG_BLAST);
-
-	// reset owner so death message happens
-	if (m_hOwner != 0)
+	if( m_hOwner != 0 )
 		pev->owner = m_hOwner->edict();
-
-	CBaseMonster::Killed(pevAttacker, GIB_ALWAYS);
+	CGrenade::Detonate();
+	UTIL_BloodDrips( pev->origin, g_vecZero, BloodColor(), 80 );
+	if( m_hOwner != 0 )
+		pev->owner = m_hOwner->edict();
 }
 
 void CPenguinGrenade::GibMonster(void)
@@ -230,7 +209,7 @@ void CPenguinGrenade::HuntThink(void)
 		pev->velocity = pev->velocity * 0.9;
 		pev->velocity.z += 8.0;
 	}
-	else if (pev->movetype = MOVETYPE_FLY)
+	else if (pev->movetype == MOVETYPE_FLY)
 	{
 		pev->movetype = MOVETYPE_BOUNCE;
 	}
@@ -358,7 +337,8 @@ void CPenguinGrenade::SuperBounceTouch(CBaseEntity *pOther)
 				else
 					ApplyMultiDamage(pev, pev);
 
-				pev->dmg += gSkillData.snarkDmgPop; // add more explosion damage
+				pev->dmg += gSkillData.plrDmgHandGrenade; // add more explosion damage
+				pev->dmg = Q_min(pev->dmg, 500);
 				// m_flDie += 2.0; // add more life
 
 				// make bite sound
@@ -513,7 +493,7 @@ void CPenguin::PrimaryAttack()
 		UTIL_TraceLine(trace_origin + gpGlobals->v_forward * 20, trace_origin + gpGlobals->v_forward * 64, dont_ignore_monsters, NULL, &tr);
 
 		int flags;
-#ifdef CLIENT_WEAPONS
+#if CLIENT_WEAPONS
 		flags = FEV_NOTHOST;
 #else
 		flags = 0;
@@ -526,7 +506,7 @@ void CPenguin::PrimaryAttack()
 			// player "shoot" animation
 			m_pPlayer->SetAnimation(PLAYER_ATTACK1);
 
-#ifndef CLIENT_DLL
+#if !CLIENT_DLL
 			CBaseEntity *pSqueak = CBaseEntity::Create("monster_penguin", tr.vecEndPos, m_pPlayer->pev->v_angle, m_pPlayer->edict());
 			pSqueak->pev->velocity = gpGlobals->v_forward * 200 + m_pPlayer->pev->velocity;
 #endif

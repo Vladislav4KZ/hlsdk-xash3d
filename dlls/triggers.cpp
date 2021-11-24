@@ -164,7 +164,7 @@ void CAutoTrigger::Spawn( void )
 
 void CAutoTrigger::Precache( void )
 {
-	pev->nextthink = gpGlobals->time + 0.1;
+	pev->nextthink = gpGlobals->time + 0.1f;
 }
 
 void CAutoTrigger::Think( void )
@@ -598,7 +598,7 @@ void CTriggerMonsterJump::Touch( CBaseEntity *pOther )
 		return;
 	}
 
-	pevOther->origin.z += 1;
+	pevOther->origin.z += 1.0f;
 
 	if( FBitSet( pevOther->flags, FL_ONGROUND ) ) 
 	{
@@ -723,7 +723,7 @@ void CTargetCDAudio::Spawn( void )
 	pev->movetype = MOVETYPE_NONE;
 
 	if( pev->scale > 0 )
-		pev->nextthink = gpGlobals->time + 1.0;
+		pev->nextthink = gpGlobals->time + 1.0f;
 }
 
 void CTargetCDAudio::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
@@ -743,7 +743,7 @@ void CTargetCDAudio::Think( void )
 	if( !pClient )
 		return;
 
-	pev->nextthink = gpGlobals->time + 0.5;
+	pev->nextthink = gpGlobals->time + 0.5f;
 
 	if( ( pClient->v.origin - pev->origin ).Length() <= pev->scale )
 		Play();
@@ -809,8 +809,8 @@ void CTriggerHurt::RadiationThink( void )
 	origin = pev->origin;
 	view_ofs = pev->view_ofs;
 
-	pev->origin = ( pev->absmin + pev->absmax ) * 0.5;
-	pev->view_ofs = pev->view_ofs * 0.0;
+	pev->origin = ( pev->absmin + pev->absmax ) * 0.5f;
+	pev->view_ofs = pev->view_ofs * 0.0f;
 
 	pentPlayer = FIND_CLIENT_IN_PVS( edict() );
 
@@ -825,8 +825,8 @@ void CTriggerHurt::RadiationThink( void )
 		pevTarget = VARS( pentPlayer );
 
 		// get range to player;
-		vecSpot1 = ( pev->absmin + pev->absmax ) * 0.5;
-		vecSpot2 = ( pevTarget->absmin + pevTarget->absmax ) * 0.5;
+		vecSpot1 = ( pev->absmin + pev->absmax ) * 0.5f;
+		vecSpot2 = ( pevTarget->absmin + pevTarget->absmax ) * 0.5f;
 
 		vecRange = vecSpot1 - vecSpot2;
 		flRange = vecRange.Length();
@@ -839,7 +839,7 @@ void CTriggerHurt::RadiationThink( void )
 			pPlayer->m_flgeigerRange = flRange;
 	}
 
-	pev->nextthink = gpGlobals->time + 0.25;
+	pev->nextthink = gpGlobals->time + 0.25f;
 }
 
 //
@@ -936,7 +936,7 @@ void CBaseTrigger::HurtTouch( CBaseEntity *pOther )
 	// while touching the trigger.  Player continues taking damage for a while after
 	// leaving the trigger
 
-	fldmg = pev->dmg * 0.5;	// 0.5 seconds worth of damage, pev->dmg is damage/second
+	fldmg = pev->dmg * 0.5f;	// 0.5 seconds worth of damage, pev->dmg is damage/second
 
 	// JAY: Cut this because it wasn't fully realized.  Damage is simpler now.
 #if 0
@@ -976,7 +976,7 @@ void CBaseTrigger::HurtTouch( CBaseEntity *pOther )
 	pev->pain_finished = gpGlobals->time;
 
 	// Apply damage every half second
-	pev->dmgtime = gpGlobals->time + 0.5;// half second delay until this trigger can hurt toucher again
+	pev->dmgtime = gpGlobals->time + 0.5f;// half second delay until this trigger can hurt toucher again
 
 	if( pev->target )
 	{
@@ -1001,7 +1001,7 @@ LINK_ENTITY_TO_CLASS( trigger_multiple, CTriggerMultiple )
 void CTriggerMultiple::Spawn( void )
 {
 	if( m_flWait == 0 )
-		m_flWait = 0.2;
+		m_flWait = 0.2f;
 
 	InitTrigger();
 
@@ -1087,7 +1087,7 @@ void CBaseTrigger::ActivateMultiTrigger( CBaseEntity *pActivator )
 	if( pev->nextthink > gpGlobals->time )
 		return;         // still waiting for reset time
 
-	if( !UTIL_IsMasterTriggered( m_sMaster,pActivator ) )
+	if( !UTIL_IsMasterTriggered( m_sMaster, pActivator ) )
 		return;
 
 	if( FClassnameIs( pev, "trigger_secret" ) )
@@ -1122,7 +1122,7 @@ void CBaseTrigger::ActivateMultiTrigger( CBaseEntity *pActivator )
 		// we can't just remove (self) here, because this is a touch function
 		// called while C code is looping through area links...
 		SetTouch( NULL );
-		pev->nextthink = gpGlobals->time + 0.1;
+		pev->nextthink = gpGlobals->time + 0.1f;
 		SetThink( &CBaseEntity::SUB_Remove );
 	}
 }
@@ -1154,7 +1154,7 @@ void CBaseTrigger::CounterUse( CBaseEntity *pActivator, CBaseEntity *pCaller, US
 
 	BOOL fTellActivator =
 		( m_hActivator != 0 ) &&
-		FClassnameIs( m_hActivator->pev, "player" ) &&
+		m_hActivator->IsPlayer() &&
 		!FBitSet( pev->spawnflags, SPAWNFLAG_NOMESSAGE );
 	if( m_cTriggersLeft != 0 )
 	{
@@ -1462,7 +1462,7 @@ void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 //
 void CChangeLevel::TouchChangeLevel( CBaseEntity *pOther )
 {
-	if( !FClassnameIs( pOther->pev, "player" ) )
+	if( !pOther->IsPlayer() )
 		return;
 
 	ChangeLevelNow( pOther );
@@ -1665,7 +1665,7 @@ void NextLevel( void )
 	if( pChange->pev->nextthink < gpGlobals->time )
 	{
 		pChange->SetThink( &CChangeLevel::ExecuteChangeLevel );
-		pChange->pev->nextthink = gpGlobals->time + 0.1;
+		pChange->pev->nextthink = gpGlobals->time + 0.1f;
 	}
 }
 
@@ -2275,13 +2275,13 @@ void CTriggerCamera::FollowTarget()
 	if( dy > 180 ) 
 		dy = dy - 360;
 
-	pev->avelocity.x = dx * 40 * gpGlobals->frametime;
-	pev->avelocity.y = dy * 40 * gpGlobals->frametime;
+	pev->avelocity.x = dx * 40 * 0.01f;
+	pev->avelocity.y = dy * 40 * 0.01f;
 
 	if( !( FBitSet( pev->spawnflags, SF_CAMERA_PLAYER_TAKECONTROL ) ) )
 	{
-		pev->velocity = pev->velocity * 0.8;
-		if( pev->velocity.Length() < 10.0 )
+		pev->velocity = pev->velocity * 0.8f;
+		if( pev->velocity.Length() < 10.0f )
 			pev->velocity = g_vecZero;
 	}
 

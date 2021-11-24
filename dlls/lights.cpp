@@ -155,16 +155,16 @@ void CEnvLight::KeyValue( KeyValueData* pkvd )
 		}
 		else if( j == 4 )
 		{
-			v /= 255;
-			r *= v;
-			g *= v;
-			b *= v;
+			float vf = v / 255.0f;
+			r *= vf;
+			g *= vf;
+			b *= vf;
 		}
 
 		// simulate qrad direct, ambient,and gamma adjustments, as well as engine scaling
-		r = (int)( pow( r / 114.0, 0.6 ) * 264.0 );
-		g = (int)( pow( g / 114.0, 0.6 ) * 264.0 );
-		b = (int)( pow( b / 114.0, 0.6 ) * 264.0 );
+		r = (int)( pow( r / 114.0f, 0.6f ) * 264.0f );
+		g = (int)( pow( g / 114.0f, 0.6f ) * 264.0f );
+		b = (int)( pow( b / 114.0f, 0.6f ) * 264.0f );
 
 		pkvd->fHandled = TRUE;
 		sprintf( szColor, "%d", r );
@@ -185,11 +185,11 @@ void CEnvLight::Spawn( void )
 	char szVector[64];
 	UTIL_MakeAimVectors( pev->angles );
 
-	sprintf( szVector, "%f", gpGlobals->v_forward.x );
+	sprintf( szVector, "%f", (double)gpGlobals->v_forward.x );
 	CVAR_SET_STRING( "sv_skyvec_x", szVector );
-	sprintf( szVector, "%f", gpGlobals->v_forward.y );
+	sprintf( szVector, "%f", (double)gpGlobals->v_forward.y );
 	CVAR_SET_STRING( "sv_skyvec_y", szVector );
-	sprintf( szVector, "%f", gpGlobals->v_forward.z );
+	sprintf( szVector, "%f", (double)gpGlobals->v_forward.z );
 	CVAR_SET_STRING( "sv_skyvec_z", szVector );
 
 	CLight::Spawn();

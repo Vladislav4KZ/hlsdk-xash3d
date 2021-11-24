@@ -45,7 +45,7 @@ extern DLL_GLOBAL BOOL		g_fGameOver;
 extern DLL_GLOBAL int		g_iSkillLevel;
 extern DLL_GLOBAL ULONG		g_ulFrameCount;
 
-char *GetTeamName( int team );
+const char *GetTeamName( int team );
 
 extern void CopyToBodyQue( entvars_t* pev );
 extern int giPrecacheGrunt;
@@ -53,6 +53,7 @@ extern int gmsgSayText;
 extern int gmsgBhopcap;
 
 extern cvar_t allow_spectators;
+extern cvar_t multibyte_only;
 
 extern int g_teamplay;
 
@@ -74,7 +75,7 @@ void set_suicide_frame( entvars_t *pev )
 	pev->solid = SOLID_NOT;
 	pev->movetype = MOVETYPE_TOSS;
 	pev->deadflag = DEAD_DEAD;
-	pev->nextthink = -1;
+	pev->nextthink = -1.0f;
 }
 
 
@@ -171,7 +172,7 @@ void ClientKill( edict_t *pEntity )
 	if( pl->m_fNextSuicideTime > gpGlobals->time )
 		return;  // prevent suiciding too ofter
 
-	pl->m_fNextSuicideTime = gpGlobals->time + 1;  // don't let them suicide for 5 seconds after suiciding
+	pl->m_fNextSuicideTime = gpGlobals->time + 1.0f;  // don't let them suicide for 5 seconds after suiciding
 
 	// have the player kill themself
 	pev->health = 0;
@@ -197,6 +198,7 @@ void ClientPutInServer( edict_t *pEntity )
 
 	pPlayer = GetClassPtr( (CBasePlayer *)pev );
 	pPlayer->SetCustomDecalFrames( -1 ); // Assume none;
+	pPlayer->SetPrefsFromUserinfo( g_engfuncs.pfnGetInfoKeyBuffer( pEntity ) );
 
 	// Allocate a CBasePlayer for pev, and call spawn
 	pPlayer->Spawn();
@@ -208,7 +210,7 @@ void ClientPutInServer( edict_t *pEntity )
 	pPlayer->pev->iuser2 = 0;
 }
 
-#ifndef NO_VOICEGAMEMGR
+#if !NO_VOICEGAMEMGR
 #include "voice_gamemgr.h"
 extern CVoiceGameMgr g_VoiceGameMgr;
 #endif
@@ -270,7 +272,7 @@ decodeError:
 	uValueOut = '?';
 	bErrorOut = true;
 	return nBytes;
-
+#if 0
 decodeFinishedMaybeCESU8:
 	// Do we have a full UTF-16 surrogate pair that's been UTF-8 encoded afterwards?
 	// That is, do we have 0xD800-0xDBFF followed by 0xDC00-0xDFFF? If so, decode it all.
@@ -281,6 +283,7 @@ decodeFinishedMaybeCESU8:
 		uMinValue = 0x10000;
 	}
 	goto decodeFinished;
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -289,6 +292,10 @@ decodeFinishedMaybeCESU8:
 bool Q_UnicodeValidate( const char *pUTF8 )
 {
 	bool bError = false;
+
+	if( !multibyte_only.value )
+		return true;
+
 	while( *pUTF8 )
 	{
 		unsigned int uVal;
@@ -313,7 +320,7 @@ void Host_Say( edict_t *pEntity, int teamonly )
 {
 	CBasePlayer *client;
 	int		j;
-	char	*p, *pc;
+	char	*p; //, *pc;
 	char	text[128];
 	char    szTemp[256];
 	const char *cpSay = "say";
@@ -400,7 +407,7 @@ void Host_Say( edict_t *pEntity, int teamonly )
 
 		if( !( client->IsNetClient() ) )	// Not a client ? (should never be true)
 			continue;
-#ifndef NO_VOICEGAMEMGR
+#if !NO_VOICEGAMEMGR
 		// can the receiver hear the sender? or has he muted him?
 		if( g_VoiceGameMgr.PlayerHasBlockedPlayer( client, player ) )
 			continue;
@@ -463,7 +470,7 @@ ClientCommand
 called each time a player uses a "cmd" command
 ============
 */
-extern float g_flWeaponCheat;
+extern cvar_t *g_enable_cheats;
 
 // Use CMD_ARGV,  CMD_ARGV, and CMD_ARGC to get pointers the character string command.
 void ClientCommand( edict_t *pEntity )
@@ -491,7 +498,7 @@ void ClientCommand( edict_t *pEntity )
 	}
 	else if( FStrEq(pcmd, "give" ) )
 	{
-		if( g_flWeaponCheat != 0.0 )
+		if( g_enable_cheats->value != 0 )
 		{
 			int iszItem = ALLOC_STRING( CMD_ARGV( 1 ) );	// Make a copy of the classname
 			GetClassPtr( (CBasePlayer *)pev )->GiveNamedItem( STRING( iszItem ) );
@@ -499,7 +506,7 @@ void ClientCommand( edict_t *pEntity )
 	}
 	else if( FStrEq( pcmd, "fire" ) )
 	{
-		if( g_flWeaponCheat != 0.0 )
+		if( g_enable_cheats->value != 0 )
 		{
 			CBaseEntity *pPlayer = CBaseEntity::Instance( pEntity );
 			if( CMD_ARGC() > 1 )
@@ -535,7 +542,7 @@ void ClientCommand( edict_t *pEntity )
 	}
 	else if( FStrEq( pcmd, "fov" ) )
 	{
-		if( g_flWeaponCheat && CMD_ARGC() > 1 )
+		if( g_enable_cheats->value != 0 && CMD_ARGC() > 1 )
 		{
 			GetClassPtr( (CBasePlayer *)pev )->m_iFOV = atoi( CMD_ARGV( 1 ) );
 		}
@@ -887,6 +894,11 @@ void ClientPrecache( void )
 	PRECACHE_SOUND( "player/pl_wade3.wav" );
 	PRECACHE_SOUND( "player/pl_wade4.wav" );
 
+	PRECACHE_SOUND( "player/pl_snow1.wav" );		// walk on snow
+	PRECACHE_SOUND( "player/pl_snow2.wav" );
+	PRECACHE_SOUND( "player/pl_snow3.wav" );
+	PRECACHE_SOUND( "player/pl_snow4.wav" );
+
 	PRECACHE_SOUND( "debris/wood1.wav" );			// hit wood texture
 	PRECACHE_SOUND( "debris/wood2.wav" );
 	PRECACHE_SOUND( "debris/wood3.wav" );
@@ -1124,8 +1136,8 @@ void SetupVisibility( edict_t *pViewEntity, edict_t *pClient, unsigned char **pv
 		}
 	}
 
-	*pvs = ENGINE_SET_PVS( (float *)&org );
-	*pas = ENGINE_SET_PAS( (float *)&org );
+	*pvs = ENGINE_SET_PVS( org );
+	*pas = ENGINE_SET_PAS( org );
 }
 
 #include "entity_state.h"
@@ -1225,7 +1237,7 @@ int AddToFullPack( struct entity_state_s *state, int e, edict_t *ent, edict_t *h
 	//
 
 	// Round animtime to nearest millisecond
-	state->animtime = (int)( 1000.0 * ent->v.animtime ) / 1000.0;
+	state->animtime = (int)( 1000.0f * ent->v.animtime ) / 1000.0f;
 
 	memcpy( state->origin, ent->v.origin, 3 * sizeof(float) );
 	memcpy( state->angles, ent->v.angles, 3 * sizeof(float) );
@@ -1647,7 +1659,7 @@ void RegisterEncoders( void )
 
 int GetWeaponData( struct edict_s *player, struct weapon_data_s *info )
 {
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 	int i;
 	weapon_data_t *item;
 	entvars_t *pev = &player->v;
@@ -1683,12 +1695,12 @@ int GetWeaponData( struct edict_s *player, struct weapon_data_s *info )
 						item->m_iId			= II.iId;
 						item->m_iClip			= gun->m_iClip;
 
-						item->m_flTimeWeaponIdle	= Q_max( gun->m_flTimeWeaponIdle, -0.001 );
-						item->m_flNextPrimaryAttack	= Q_max( gun->m_flNextPrimaryAttack, -0.001 );
-						item->m_flNextSecondaryAttack	= Q_max( gun->m_flNextSecondaryAttack, -0.001 );
+						item->m_flTimeWeaponIdle	= Q_max( gun->m_flTimeWeaponIdle, -0.001f );
+						item->m_flNextPrimaryAttack	= Q_max( gun->m_flNextPrimaryAttack, -0.001f );
+						item->m_flNextSecondaryAttack	= Q_max( gun->m_flNextSecondaryAttack, -0.001f );
 						item->m_fInReload		= gun->m_fInReload;
 						item->m_fInSpecialReload	= gun->m_fInSpecialReload;
-						item->fuser1			= Q_max( gun->pev->fuser1, -0.001 );
+						item->fuser1			= Q_max( gun->pev->fuser1, -0.001f );
 						item->fuser2			= gun->m_flStartThrow;
 						item->fuser3			= gun->m_flReleaseThrow;
 						item->iuser1			= gun->m_chargeReady;
@@ -1776,7 +1788,7 @@ void UpdateClientData( const struct edict_s *ent, int sendweapons, struct client
 		cd->iuser1		= pev->iuser1;
 		cd->iuser2		= pev->iuser2;
 	}
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 	if( sendweapons )
 	{
 		if( pl )
@@ -1817,6 +1829,10 @@ void UpdateClientData( const struct edict_s *ent, int sendweapons, struct client
 					else if( pl->m_pActiveItem->m_iId == WEAPON_EAGLE )
 					{
 						cd->vuser2.y = ( (CEagle *)pl->m_pActiveItem )->m_fEagleLaserActive;
+					}
+					else if( pl->m_pActiveItem->m_iId == WEAPON_PIPEWRENCH )
+					{
+						cd->vuser2.y = ( (CPipeWrench *)pl->m_pActiveItem )->m_iSwingMode;
 					}
 					else if( pl->m_pActiveItem->m_iId == WEAPON_M249 )
 					{
@@ -1973,7 +1989,7 @@ One of the ENGINE_FORCE_UNMODIFIED files failed the consistency check for the sp
 int InconsistentFile( const edict_t *player, const char *filename, char *disconnect_message )
 {
 	// Server doesn't care?
-	if( CVAR_GET_FLOAT( "mp_consistency" ) != 1 )
+	if( CVAR_GET_FLOAT( "mp_consistency" ) != 1.0f )
 		return 0;
 
 	// Default behavior is to kick the player

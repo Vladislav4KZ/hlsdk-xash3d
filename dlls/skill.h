@@ -16,7 +16,7 @@
 // skill.h - skill level concerns
 //=========================================================
 #pragma once
-#ifndef SKILL_H
+#if !defined(SKILL_H)
 #define SKILL_H
 
 struct skilldata_t
@@ -145,19 +145,19 @@ struct skilldata_t
 	float pitdroneDmgWhip;
 	float pitdroneDmgSpit;
 
-	float hgruntAllyHealth;
-	float hgruntAllyDmgKick;
-	float hgruntAllyShotgunPellets;
-	float hgruntAllyGrenadeSpeed;
+	float fgruntHealth;
+	float fgruntDmgKick;
+	float fgruntShotgunPellets;
+	float fgruntGrenadeSpeed;
 
-	float medicAllyHealth;
-	float medicAllyDmgKick;
-	float medicAllyGrenadeSpeed;
-	float medicAllyHeal;
+	float medicHealth;
+	float medicDmgKick;
+	float medicGrenadeSpeed;
+	float medicHeal;
 
-	float torchAllyHealth;
-	float torchAllyDmgKick;
-	float torchAllyGrenadeSpeed;
+	float torchHealth;
+	float torchDmgKick;
+	float torchGrenadeSpeed;
 
 	float massnHealth;
 	float massnDmgKick;
@@ -210,6 +210,7 @@ struct skilldata_t
 	float plrDmgGrapple;
 	float plrDmgEagle;
 	float plrDmgDisplacer;
+	float plrDisplacerRadius;
 	float plrDmgShockroachSingleplayer;
 	float plrDmgSpore;
 	float plrDmg762;

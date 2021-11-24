@@ -40,7 +40,7 @@
 #define MASSN_9MMAR					(1 << 0)
 #define MASSN_HANDGRENADE			(1 << 1)
 #define MASSN_GRENADELAUNCHER		(1 << 2)
-#define MASSN_SNIPERRIFLE			(1 << 4)
+#define MASSN_SNIPERRIFLE			(1 << 3)
 
 // Body groups.
 #define HEAD_GROUP					1
@@ -84,7 +84,7 @@ public:
 	void IdleSound(void);
 };
 
-LINK_ENTITY_TO_CLASS(monster_male_assassin, CMassn);
+LINK_ENTITY_TO_CLASS(monster_male_assassin, CMassn)
 
 //=========================================================
 // Purpose:
@@ -127,7 +127,7 @@ void CMassn::Sniperrifle(void)
 
 	Vector	vecShellVelocity = gpGlobals->v_right * RANDOM_FLOAT(40, 90) + gpGlobals->v_up * RANDOM_FLOAT(75, 200) + gpGlobals->v_forward * RANDOM_FLOAT(-40, 40);
 	EjectBrass(vecShootOrigin - vecShootDir * 24, vecShellVelocity, pev->angles.y, m_iBrassShell, TE_BOUNCE_SHELL);
-	FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_1DEGREES, 2048, BULLET_PLAYER_357, 0); // shoot +-7.5 degrees
+	FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_1DEGREES, 2048, BULLET_MONSTER_762, 0); // shoot +-7.5 degrees
 
 	pev->effects |= EF_MUZZLEFLASH;
 
@@ -198,7 +198,7 @@ void CMassn::HandleAnimEvent(MonsterEvent_t *pEvent)
 		{
 			Sniperrifle();
 
-			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/sniper_bolt1.wav", 1, ATTN_NORM);
+			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/sniper_fire.wav", 1, ATTN_NORM);
 		}
 
 		CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, 384, 0.3);
@@ -301,6 +301,7 @@ void CMassn::Precache()
 	PRECACHE_SOUND("weapons/glauncher.wav");
 
 	PRECACHE_SOUND("weapons/sniper_bolt1.wav");
+	PRECACHE_SOUND("weapons/sniper_fire.wav");
 
 	PRECACHE_SOUND("zombie/claw_miss2.wav");// because we use the basemonster SWIPE animation event
 
@@ -336,41 +337,83 @@ void CMassn::DeathSound(void)
 class CAssassinRepel : public CHGruntRepel
 {
 public:
-	void Precache(void);
-	void EXPORT RepelUse(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	const char* TrooperName() {
+		return "monster_male_assassin";
+	}
 };
 
-LINK_ENTITY_TO_CLASS(monster_assassin_repel, CAssassinRepel);
+LINK_ENTITY_TO_CLASS(monster_assassin_repel, CAssassinRepel)
 
-void CAssassinRepel::Precache(void)
+class CDeadMassn : public CBaseMonster
 {
-	UTIL_PrecacheOther("monster_male_assassin");
-	m_iSpriteTexture = PRECACHE_MODEL("sprites/rope.spr");
+public:
+	void Spawn( void );
+	int Classify( void ) { return CLASS_HUMAN_MILITARY; }
+
+	void KeyValue( KeyValueData *pkvd );
+
+	int m_iPose;// which sequence to display	-- temporary, don't need to save
+	static const char *m_szPoses[3];
+};
+
+const char *CDeadMassn::m_szPoses[] = { "deadstomach", "deadside", "deadsitting" };
+
+void CDeadMassn::KeyValue( KeyValueData *pkvd )
+{
+	if( FStrEq( pkvd->szKeyName, "pose" ) )
+	{
+		m_iPose = atoi( pkvd->szValue );
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CBaseMonster::KeyValue( pkvd );
 }
 
-void CAssassinRepel::RepelUse(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+LINK_ENTITY_TO_CLASS( monster_massassin_dead, CDeadMassn )
+
+//=========================================================
+// ********** DeadHGrunt SPAWN **********
+//=========================================================
+void CDeadMassn::Spawn( void )
 {
-	TraceResult tr;
-	UTIL_TraceLine(pev->origin, pev->origin + Vector(0, 0, -4096.0), dont_ignore_monsters, ENT(pev), &tr);
-	/*
-	if ( tr.pHit && Instance( tr.pHit )->pev->solid != SOLID_BSP)
-	return NULL;
-	*/
+	PRECACHE_MODEL( "models/massn.mdl" );
+	SET_MODEL( ENT( pev ), "models/massn.mdl" );
 
-	CBaseEntity *pEntity = Create("monster_male_assassin", pev->origin, pev->angles);
-	CBaseMonster *pGrunt = pEntity->MyMonsterPointer();
-	pGrunt->pev->movetype = MOVETYPE_FLY;
-	pGrunt->pev->velocity = Vector(0, 0, RANDOM_FLOAT(-196, -128));
-	pGrunt->SetActivity(ACT_GLIDE);
-	// UNDONE: position?
-	pGrunt->m_vecLastPosition = tr.vecEndPos;
+	pev->effects		= 0;
+	pev->yaw_speed		= 8;
+	pev->sequence		= 0;
+	m_bloodColor		= BLOOD_COLOR_RED;
 
-	CBeam *pBeam = CBeam::BeamCreate("sprites/rope.spr", 10);
-	pBeam->PointEntInit(pev->origin + Vector(0, 0, 112), pGrunt->entindex());
-	pBeam->SetFlags(BEAM_FSOLID);
-	pBeam->SetColor(255, 255, 255);
-	pBeam->SetThink(&CBeam::SUB_Remove);
-	pBeam->pev->nextthink = gpGlobals->time + -4096.0 * tr.flFraction / pGrunt->pev->velocity.z + 0.5;
+	pev->sequence = LookupSequence( m_szPoses[m_iPose] );
 
-	UTIL_Remove(this);
+	if( pev->sequence == -1 )
+	{
+		ALERT( at_console, "Dead massn with bad pose\n" );
+	}
+
+	// Corpses have less health
+	pev->health = 8;
+
+	// map old bodies onto new bodies
+	switch( pev->body )
+	{
+	case 0:
+		pev->body = 0;
+		pev->skin = 0;
+		break;
+	case 1:
+		pev->body = 2;
+		pev->skin = 0;
+		break;
+	case 2:
+		pev->body = 7;
+		pev->skin = 0;
+		break;
+	case 3:
+		pev->body = 8;
+		pev->skin = 0;
+		break;
+	}
+
+	MonsterInitDead();
 }

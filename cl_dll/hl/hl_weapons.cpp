@@ -69,7 +69,6 @@ CTripmine g_Tripmine;
 CSqueak g_Snark;
 CDisplacer g_Displacer;
 CEagle g_Eagle;
-CGrapple g_Grapple;
 CKnife g_Knife;
 CM249 g_M249;
 CPenguin g_Penguin;
@@ -77,6 +76,7 @@ CPipeWrench g_PipeWrench;
 CShockrifle g_Shock;
 CSniperrifle g_Sniper;
 CSporelauncher g_Spore;
+CBarnacleGrapple g_Grapple;
 
 /*
 ======================
@@ -173,7 +173,7 @@ BOOL CBasePlayerWeapon::DefaultReload( int iClipSize, int iAnim, float fDelay, i
 
 	m_fInReload = TRUE;
 
-	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 3;
+	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 3.0f;
 	return TRUE;
 }
 
@@ -228,8 +228,8 @@ BOOL CBasePlayerWeapon::DefaultDeploy( const char *szViewModel, const char *szWe
 	SendWeaponAnim( iAnim, skiplocal, body );
 
 	g_irunninggausspred = false;
-	m_pPlayer->m_flNextAttack = 0.5;
-	m_flTimeWeaponIdle = 1.0;
+	m_pPlayer->m_flNextAttack = 0.5f;
+	m_flTimeWeaponIdle = 1.0f;
 	return TRUE;
 }
 
@@ -243,7 +243,7 @@ BOOL CBasePlayerWeapon::PlayEmptySound( void )
 {
 	if( m_iPlayEmptySound )
 	{
-		HUD_PlaySound( "weapons/357_cock1.wav", 0.8 );
+		HUD_PlaySound( "weapons/357_cock1.wav", 0.8f );
 		m_iPlayEmptySound = 0;
 		return 0;
 	}
@@ -306,8 +306,8 @@ Vector CBaseEntity::FireBulletsPlayer ( ULONG cShots, Vector vecSrc, Vector vecD
 		{
 			// get circular gaussian spread
 			do {
-					x = RANDOM_FLOAT( -0.5, 0.5 ) + RANDOM_FLOAT( -0.5, 0.5 );
-					y = RANDOM_FLOAT( -0.5, 0.5 ) + RANDOM_FLOAT( -0.5, 0.5 );
+					x = RANDOM_FLOAT( -0.5f, 0.5f ) + RANDOM_FLOAT( -0.5f, 0.5f );
+					y = RANDOM_FLOAT( -0.5f, 0.5f ) + RANDOM_FLOAT( -0.5f, 0.5f );
 					z = x * x + y * y;
 			} while( z > 1 );
 		}
@@ -315,13 +315,13 @@ Vector CBaseEntity::FireBulletsPlayer ( ULONG cShots, Vector vecSrc, Vector vecD
 		{
 			//Use player's random seed.
 			// get circular gaussian spread
-			x = UTIL_SharedRandomFloat( shared_rand + iShot, -0.5, 0.5 ) + UTIL_SharedRandomFloat( shared_rand + ( 1 + iShot ) , -0.5, 0.5 );
-			y = UTIL_SharedRandomFloat( shared_rand + ( 2 + iShot ), -0.5, 0.5 ) + UTIL_SharedRandomFloat( shared_rand + ( 3 + iShot ), -0.5, 0.5 );
-			z = x * x + y * y;
+			x = UTIL_SharedRandomFloat( shared_rand + iShot, -0.5f, 0.5f ) + UTIL_SharedRandomFloat( shared_rand + ( 1 + iShot ) , -0.5f, 0.5f );
+			y = UTIL_SharedRandomFloat( shared_rand + ( 2 + iShot ), -0.5f, 0.5f ) + UTIL_SharedRandomFloat( shared_rand + ( 3 + iShot ), -0.5f, 0.5f );
+			// z = x * x + y * y;
 		}			
 	}
 
-	return Vector( x * vecSpread.x, y * vecSpread.y, 0.0 );
+	return Vector( x * vecSpread.x, y * vecSpread.y, 0.0f );
 }
 
 /*
@@ -333,11 +333,15 @@ Handles weapon firing, reloading, etc.
 */
 void CBasePlayerWeapon::ItemPostFrame( void )
 {
-	if( ( m_fInReload ) && ( m_pPlayer->m_flNextAttack <= 0.0 ) )
+	if( ( m_fInReload ) && ( m_pPlayer->m_flNextAttack <= 0.0f ) )
 	{
-#if 0 // FIXME, need ammo on client to make this work right
+#if 1
 		// complete the reload. 
-		int j = min( iMaxClip() - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] );
+		ItemInfo itemInfo;
+		memset( &itemInfo, 0, sizeof( itemInfo ) );
+		GetItemInfo( &itemInfo );
+
+		int j = Q_min( itemInfo.iMaxClip - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] );
 
 		// Add them to the clip
 		m_iClip += j;
@@ -348,7 +352,7 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 		m_fInReload = FALSE;
 	}
 
-	if( ( m_pPlayer->pev->button & IN_ATTACK2 ) && ( m_flNextSecondaryAttack <= 0.0 ) )
+	if( ( m_pPlayer->pev->button & IN_ATTACK2 ) && ( m_flNextSecondaryAttack <= 0.0f ) )
 	{
 		if( pszAmmo2() && !m_pPlayer->m_rgAmmo[SecondaryAmmoIndex()] )
 		{
@@ -358,7 +362,7 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 		SecondaryAttack();
 		m_pPlayer->pev->button &= ~IN_ATTACK2;
 	}
-	else if( ( m_pPlayer->pev->button & IN_ATTACK ) && ( m_flNextPrimaryAttack <= 0.0 ) )
+	else if( ( m_pPlayer->pev->button & IN_ATTACK ) && ( m_flNextPrimaryAttack <= 0.0f ) )
 	{
 		if( ( m_iClip == 0 && pszAmmo1() ) || ( iMaxClip() == -1 && !m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] ) )
 		{
@@ -378,7 +382,7 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 		m_fFireOnEmpty = FALSE;
 
 		// weapon is useable. Reload if empty and weapon has waited as long as it has to after firing
-		if( m_iClip == 0 && !( iFlags() & ITEM_FLAG_NOAUTORELOAD ) && m_flNextPrimaryAttack < 0.0 )
+		if( m_iClip == 0 && !( iFlags() & ITEM_FLAG_NOAUTORELOAD ) && m_flNextPrimaryAttack <= 0.0f )
 		{
 			Reload();
 			return;
@@ -493,7 +497,7 @@ Don't actually trace, but act like the trace didn't hit anything.
 void UTIL_TraceLine( const Vector &vecStart, const Vector &vecEnd, IGNORE_MONSTERS igmon, edict_t *pentIgnore, TraceResult *ptr )
 {
 	memset( ptr, 0, sizeof(*ptr) );
-	ptr->flFraction = 1.0;
+	ptr->flFraction = 1.0f;
 }
 
 /*
@@ -628,7 +632,6 @@ void HUD_InitClientWeapons( void )
 	HUD_PrepEntity( &g_Snark, &player );
 	HUD_PrepEntity( &g_Displacer, &player );
 	HUD_PrepEntity( &g_Eagle, &player );
-	HUD_PrepEntity( &g_Grapple, &player );
 	HUD_PrepEntity( &g_Knife, &player );
 	HUD_PrepEntity( &g_M249, &player );
 	HUD_PrepEntity( &g_Penguin, &player );
@@ -636,6 +639,7 @@ void HUD_InitClientWeapons( void )
 	HUD_PrepEntity( &g_Shock, &player );
 	HUD_PrepEntity( &g_Sniper, &player );
 	HUD_PrepEntity( &g_Spore, &player );
+	HUD_PrepEntity( &g_Grapple, &player );
 }
 
 /*
@@ -744,9 +748,6 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 		case WEAPON_DISPLACER:
 			pWeapon = &g_Displacer;
 			break;
-		case WEAPON_GRAPPLE:
-			pWeapon = &g_Grapple;
-			break;
 		case WEAPON_EAGLE:
 			pWeapon = &g_Eagle;
 			break;
@@ -770,6 +771,9 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 			break;
 		case WEAPON_SPORELAUNCHER:
 			pWeapon = &g_Spore;
+			break;
+		case WEAPON_GRAPPLE:
+			pWeapon = &g_Grapple;
 			break;
 	}
 
@@ -884,6 +888,10 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 	{
 		( (CEagle *)player.m_pActiveItem )->m_fEagleLaserActive = (int)from->client.vuser2[1];
 	}
+	if( player.m_pActiveItem->m_iId == WEAPON_PIPEWRENCH )
+	{
+		( (CPipeWrench *)player.m_pActiveItem )->m_iSwingMode = (int)from->client.vuser2[1];
+	}
 	else if( player.m_pActiveItem->m_iId == WEAPON_M249 )
 	{
 		player.ammo_556 = (int)from->client.vuser2[1];
@@ -965,12 +973,16 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 
 	if( player.m_pActiveItem->m_iId == WEAPON_RPG )
 	{
-		from->client.vuser2[1] = ( (CRpg *)player.m_pActiveItem)->m_fSpotActive;
-		from->client.vuser2[2] = ( (CRpg *)player.m_pActiveItem)->m_cActiveRockets;
+		to->client.vuser2[1] = ( (CRpg *)player.m_pActiveItem)->m_fSpotActive;
+		to->client.vuser2[2] = ( (CRpg *)player.m_pActiveItem)->m_cActiveRockets;
 	}
 	else if ( player.m_pActiveItem->m_iId == WEAPON_EAGLE )
 	{
 		from->client.vuser2[1] = ( (CEagle *)player.m_pActiveItem )->m_fEagleLaserActive;;
+	}
+	else if( player.m_pActiveItem->m_iId == WEAPON_PIPEWRENCH )
+	{
+		from->client.vuser2[1] = ( (CPipeWrench *)player.m_pActiveItem )->m_iSwingMode;
 	}
 	else if( player.m_pActiveItem->m_iId == WEAPON_M249 )
 	{
@@ -1001,6 +1013,16 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 		//Show laser sight/scope combo
 		if( pWeapon == &g_Python && bIsMultiplayer() )
 			 body = 1;
+
+		if (pWeapon == &g_M249) {
+			if (g_M249.m_iClip == 0) {
+				body = 8;
+			} else if (g_M249.m_iClip > 0 && g_M249.m_iClip < 8) {
+				body = 9 - g_M249.m_iClip;
+			} else {
+				body = 0;
+			}
+		}
 
 		// Force a fixed anim down to viewmodel
 		HUD_SendWeaponAnim( to->client.weaponanim, body, 1 );
@@ -1033,73 +1055,73 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 		pto->iuser3 = pCurrent->m_fireState;
 
 		// Decrement weapon counters, server does this at same time ( during post think, after doing everything else )
-		pto->m_flNextReload -= cmd->msec / 1000.0;
-		pto->m_fNextAimBonus -= cmd->msec / 1000.0;
-		pto->m_flNextPrimaryAttack -= cmd->msec / 1000.0;
-		pto->m_flNextSecondaryAttack -= cmd->msec / 1000.0;
-		pto->m_flTimeWeaponIdle -= cmd->msec / 1000.0;
-		pto->fuser1 -= cmd->msec / 1000.0;
+		pto->m_flNextReload -= cmd->msec / 1000.0f;
+		pto->m_fNextAimBonus -= cmd->msec / 1000.0f;
+		pto->m_flNextPrimaryAttack -= cmd->msec / 1000.0f;
+		pto->m_flNextSecondaryAttack -= cmd->msec / 1000.0f;
+		pto->m_flTimeWeaponIdle -= cmd->msec / 1000.0f;
+		pto->fuser1 -= cmd->msec / 1000.0f;
 
 		to->client.vuser3[2] = pCurrent->m_iSecondaryAmmoType;
 		to->client.vuser4[0] = pCurrent->m_iPrimaryAmmoType;
 		to->client.vuser4[1] = player.m_rgAmmo[pCurrent->m_iPrimaryAmmoType];
 		to->client.vuser4[2] = player.m_rgAmmo[pCurrent->m_iSecondaryAmmoType];
 
-/*		if( pto->m_flPumpTime != -9999 )
+/*		if( pto->m_flPumpTime != -9999.0f )
 		{
-			pto->m_flPumpTime -= cmd->msec / 1000.0;
-			if( pto->m_flPumpTime < -0.001 )
-				pto->m_flPumpTime = -0.001;
+			pto->m_flPumpTime -= cmd->msec / 1000.0f;
+			if( pto->m_flPumpTime < -0.001f )
+				pto->m_flPumpTime = -0.001f;
 		}*/
 
-		if( pto->m_fNextAimBonus < -1.0 )
+		if( pto->m_fNextAimBonus < -1.0f )
 		{
-			pto->m_fNextAimBonus = -1.0;
+			pto->m_fNextAimBonus = -1.0f;
 		}
 
-		if( pto->m_flNextPrimaryAttack < -1.0 )
+		if( pto->m_flNextPrimaryAttack < -1.0f )
 		{
-			pto->m_flNextPrimaryAttack = -1.0;
+			pto->m_flNextPrimaryAttack = -1.0f;
 		}
 
-		if( pto->m_flNextSecondaryAttack < -0.001 )
+		if( pto->m_flNextSecondaryAttack < -0.001f )
 		{
-			pto->m_flNextSecondaryAttack = -0.001;
+			pto->m_flNextSecondaryAttack = -0.001f;
 		}
 
-		if( pto->m_flTimeWeaponIdle < -0.001 )
+		if( pto->m_flTimeWeaponIdle < -0.001f )
 		{
-			pto->m_flTimeWeaponIdle = -0.001;
+			pto->m_flTimeWeaponIdle = -0.001f;
 		}
 
-		if( pto->m_flNextReload < -0.001 )
+		if( pto->m_flNextReload < -0.001f )
 		{
-			pto->m_flNextReload = -0.001;
+			pto->m_flNextReload = -0.001f;
 		}
 
-		if( pto->fuser1 < -0.001 )
+		if( pto->fuser1 < -0.001f )
 		{
-			pto->fuser1 = -0.001;
+			pto->fuser1 = -0.001f;
 		}
 	}
 
 	// m_flNextAttack is now part of the weapons, but is part of the player instead
-	to->client.m_flNextAttack -= cmd->msec / 1000.0;
-	if( to->client.m_flNextAttack < -0.001 )
+	to->client.m_flNextAttack -= cmd->msec / 1000.0f;
+	if( to->client.m_flNextAttack < -0.001f )
 	{
-		to->client.m_flNextAttack = -0.001;
+		to->client.m_flNextAttack = -0.001f;
 	}
 
-	to->client.fuser2 -= cmd->msec / 1000.0;
-	if( to->client.fuser2 < -0.001 )
+	to->client.fuser2 -= cmd->msec / 1000.0f;
+	if( to->client.fuser2 < -0.001f )
 	{
-		to->client.fuser2 = -0.001;
+		to->client.fuser2 = -0.001f;
 	}
 
-	to->client.fuser3 -= cmd->msec / 1000.0;
-	if( to->client.fuser3 < -0.001 )
+	to->client.fuser3 -= cmd->msec / 1000.0f;
+	if( to->client.fuser3 < -0.001f )
 	{
-		to->client.fuser3 = -0.001;
+		to->client.fuser3 = -0.001f;
 	}
 
 	// Store off the last position from the predicted state.
@@ -1124,7 +1146,7 @@ void _DLLEXPORT HUD_PostRunCmd( struct local_state_s *from, struct local_state_s
 {
 	g_runfuncs = runfuncs;
 
-#if defined( CLIENT_WEAPONS )
+#if CLIENT_WEAPONS
 	if( cl_lw && cl_lw->value )
 	{
 		HUD_WeaponsPostThink( from, to, cmd, time, random_seed );
